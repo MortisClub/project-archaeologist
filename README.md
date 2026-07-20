@@ -1,61 +1,75 @@
-# Project Archaeologist
+<p align="center">
+  <img src="assets/logo.svg" alt="Project Archaeologist" width="660">
+</p>
 
-A local, language-agnostic tool that reads any project folder and tells you what it is:
-the stack, the shape of the tree, which files nothing imports, which files matter most,
-which dependencies are behind, and — when the project is a git repo — how it grew over
-time. No server, no cloud; everything runs on your machine.
+<p align="center">
+  <img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT">
+  <img src="https://img.shields.io/badge/built%20with-Rust-orange" alt="Rust">
+</p>
 
-## Usage
+Открываешь старый проект, о котором уже ничего не помнишь, — и за минуту понимаешь, что это.
+Стек, форма дерева, какие файлы никто не импортирует, какие важнее всего, какие зависимости
+отстали и, если это git-репозиторий, как проект рос. Всё считается локально, без сервера и облака.
 
-```
-archaeologist scan <path>
-```
+Одна команда печатает короткую сводку и кладёт рядом полный отчёт — `archaeology-report.json`
+и самодостаточную карту `archaeology-report.html`, которую можно открыть в браузере.
 
-This prints a short summary and writes two files into the current directory:
+<p align="center">
+  <img src="assets/report-overview.png" alt="HTML-отчёт" width="820">
+</p>
 
-- `archaeology-report.json` — the full report
-- `archaeology-report.html` — a self-contained interactive map you can open in a browser
+## Что оно находит
 
-Flags:
+За один проход:
 
-- `--out <dir>` write the report somewhere other than the current directory
-- `--open` open the HTML report when it's done
-- `--check-updates` query npm, crates.io and PyPI to flag outdated dependencies (needs network)
+- стек и фреймворки — из манифестов (`Cargo.toml`, `package.json`, `go.mod`, `Dockerfile`, …);
+- языки — разбивка по числу файлов и размеру;
+- неиспользуемые файлы — исходники, которые никто не импортирует;
+- самые важные файлы — по числу входящих импортов, частоте правок в git и размеру;
+- зависимости, а с `--check-updates` — и какие из них отстали от реестра;
+- дубликаты — по хэшу содержимого;
+- карту директорий по объёму и самые большие файлы;
+- историю git — коммиты, возраст, что менялось чаще всего, куда проект рос первым.
 
-## What it reports
+«Неиспользуемые файлы» — это не грубая эвристика: обходится реальный граф импортов, а точки
+входа (`main`, `index`, `__init__.py`, …) и тесты из списка исключаются, так что остаётся
+действительно мёртвый код. Граф строится для JavaScript/TypeScript и Python; на других языках
+файлы попадают в инвентарь, но без графа — и отчёт про это честно пишет.
 
-**Stack** — detected from manifest files (`Cargo.toml`, `package.json`, `go.mod`,
-`Dockerfile`, …) plus frameworks pulled from those manifests (React, Django, Axum, …).
+<p align="center">
+  <img src="assets/report-unused.png" alt="Неиспользуемые файлы и устаревшие зависимости" width="820">
+</p>
 
-**Languages** — breakdown by file count and size.
+Историю проекта я беру из git, а не из файловых времён: те слишком часто врут после
+копирования, распаковки архива или свежего checkout. Поэтому без репозитория инструмент
+работает, но раздел истории просто пропускается.
 
-**Unused files** — the import graph is walked to find source files that nothing imports.
-This is the honest version: entry points (`main`, `index`, `__init__.py`, …) and tests are
-excluded, so what's left is genuinely dead. Coverage is JavaScript/TypeScript and Python;
-other languages are inventoried but not graphed, and the report says so.
+## Установка
 
-**Most important files** — ranked by a transparent blend of how many files import them,
-how often git has touched them, and their size. It's an estimate, not an oracle, and the
-report shows the numbers behind each rank.
-
-**Dependencies** — every declared dependency across ecosystems. With `--check-updates` each
-one is compared against the registry's latest release and flagged if it's behind.
-
-**Duplicates** — identical files matched by content hash.
-
-**Project map** — directories sized by bytes, plus the largest files.
-
-**Git history** — total commits, the age range, the most-changed files, which directories
-the project grew into first, and the oldest files still in the tree.
-
-Git history is the honest source of a project's timeline. Without a repo the tool still
-runs, but the history section is skipped — filesystem timestamps lie too often (copies,
-archives, checkouts) to reconstruct evolution from them.
-
-## Build
+Нужен [Rust](https://rustup.rs).
 
 ```
+git clone https://github.com/MortisClub/project-archaeologist
+cd project-archaeologist
 cargo build --release
 ```
 
-The binary lands in `target/release/archaeologist`.
+Бинарник — `target/release/archaeologist`.
+
+## Использование
+
+```
+archaeologist scan <путь>
+```
+
+- `--out <dir>` — куда положить отчёт (по умолчанию текущая папка)
+- `--open` — открыть HTML-отчёт по завершении
+- `--check-updates` — сверить зависимости с npm, crates.io и PyPI (нужна сеть)
+
+```
+archaeologist scan ../some-old-project --check-updates --open
+```
+
+## Лицензия
+
+MIT, см. [LICENSE](LICENSE).
