@@ -44,7 +44,9 @@ pub fn analyze(files: &[FileEntry], churn: &HashMap<String, usize>) -> Insights 
         };
         for target in targets {
             if target != f.path {
-                *in_degree.entry(paths.get(target.as_str()).copied().unwrap()).or_insert(0) += 1;
+                *in_degree
+                    .entry(paths.get(target.as_str()).copied().unwrap())
+                    .or_insert(0) += 1;
                 edges += 1;
             }
         }
@@ -114,7 +116,10 @@ fn is_entry(path: &str) -> bool {
     let name = path.rsplit('/').next().unwrap_or(path);
     let stem = name.split('.').next().unwrap_or(name);
     matches!(stem, "main" | "index" | "app" | "cli" | "server")
-        || matches!(name, "__init__.py" | "__main__.py" | "setup.py" | "conftest.py" | "manage.py")
+        || matches!(
+            name,
+            "__init__.py" | "__main__.py" | "setup.py" | "conftest.py" | "manage.py"
+        )
 }
 
 fn is_test(path: &str) -> bool {
@@ -213,7 +218,7 @@ fn resolve_python(from_file: &str, content: &str, paths: &HashSet<&str>) -> Vec<
                 out.push(t);
             }
             for name in names.split(',') {
-                let name = name.trim().split_whitespace().next().unwrap_or("");
+                let name = name.split_whitespace().next().unwrap_or("");
                 if name.is_empty() || name == "*" {
                     continue;
                 }
@@ -224,7 +229,7 @@ fn resolve_python(from_file: &str, content: &str, paths: &HashSet<&str>) -> Vec<
             }
         } else if let Some(rest) = line.strip_prefix("import ") {
             for part in rest.split(',') {
-                let module = part.trim().split_whitespace().next().unwrap_or("");
+                let module = part.split_whitespace().next().unwrap_or("");
                 if let Some(t) = resolve_py_module(from_file, module, paths) {
                     out.push(t);
                 }
@@ -247,16 +252,32 @@ fn resolve_py_module(from_file: &str, module: &str, paths: &HashSet<&str>) -> Op
         }
         parts.extend(dir.iter().map(|s| s.to_string()));
     }
-    parts.extend(rest.split('.').filter(|s| !s.is_empty()).map(str::to_string));
+    parts.extend(
+        rest.split('.')
+            .filter(|s| !s.is_empty())
+            .map(str::to_string),
+    );
     if parts.is_empty() {
         return None;
     }
 
     let joined = parts.join("/");
-    for candidate in [format!("{joined}.py"), format!("{joined}/__init__.py")] {
-        if paths.contains(candidate.as_str()) {
-            return Some(candidate);
-        }
+    [format!("{joined}.py"), format!("{joined}/__init__.py")]
+        .into_iter()
+        .find(|candidate| paths.contains(candidate.as_str()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::join_relative;
+
+    #[test]
+    fn resolves_relative_paths() {
+        assert_eq!(
+            join_relative("src/index.js", "./utils/greet"),
+            "src/utils/greet"
+        );
+        assert_eq!(join_relative("a/b/c.js", "../d"), "a/d");
+        assert_eq!(join_relative("main.py", "./pkg/mod"), "pkg/mod");
     }
-    None
 }

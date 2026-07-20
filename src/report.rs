@@ -60,3 +60,15 @@ pub fn human_bytes(bytes: u64) -> String {
         format!("{size:.1} {}", UNITS[unit])
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::human_bytes;
+
+    #[test]
+    fn formats_sizes() {
+        assert_eq!(human_bytes(512), "512 B");
+        assert_eq!(human_bytes(1024), "1.0 KB");
+        assert_eq!(human_bytes(1536), "1.5 KB");
+    }
+}

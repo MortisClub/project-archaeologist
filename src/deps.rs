@@ -99,7 +99,9 @@ fn from_requirements(root: &Path) -> Vec<Dependency> {
         .map(str::trim)
         .filter(|l| !l.is_empty() && !l.starts_with('#') && !l.starts_with('-'))
         .filter_map(|line| {
-            let end = line.find(|c: char| "=<>!~ ".contains(c)).unwrap_or(line.len());
+            let end = line
+                .find(|c: char| "=<>!~ ".contains(c))
+                .unwrap_or(line.len());
             let name = line[..end].trim();
             if name.is_empty() {
                 return None;
@@ -127,7 +129,9 @@ fn from_pyproject(root: &Path) -> Vec<Dependency> {
         .and_then(|d| d.as_array())
     {
         for item in arr.iter().filter_map(|v| v.as_str()) {
-            let end = item.find(|c: char| "=<>!~ ".contains(c)).unwrap_or(item.len());
+            let end = item
+                .find(|c: char| "=<>!~ ".contains(c))
+                .unwrap_or(item.len());
             let name = item[..end].trim();
             if !name.is_empty() {
                 out.push(dep("pypi", name, item[end..].trim()));
@@ -212,4 +216,29 @@ fn numeric_parts(version: &str) -> Vec<u64> {
         .split('.')
         .filter_map(|p| p.parse().ok())
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{is_newer, numeric_parts};
+
+    #[test]
+    fn detects_newer_release() {
+        assert!(is_newer("1.5.0", "1.2.0"));
+        assert!(is_newer("19.2.7", "^17.0.0"));
+        assert!(is_newer("3.3.0", "2"));
+    }
+
+    #[test]
+    fn same_or_older_is_not_newer() {
+        assert!(!is_newer("1.0.0", "1.0.0"));
+        assert!(!is_newer("1.2.0", "1.5.0"));
+    }
+
+    #[test]
+    fn parses_leading_numeric() {
+        assert_eq!(numeric_parts("^1.2.3"), vec![1, 2, 3]);
+        assert_eq!(numeric_parts("0.8"), vec![0, 8]);
+        assert!(numeric_parts("*").is_empty());
+    }
 }

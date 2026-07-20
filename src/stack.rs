@@ -44,7 +44,7 @@ fn languages(files: &[FileEntry]) -> Vec<LangStat> {
             bytes,
         })
         .collect();
-    out.sort_by(|a, b| b.bytes.cmp(&a.bytes));
+    out.sort_by_key(|l| std::cmp::Reverse(l.bytes));
     out
 }
 

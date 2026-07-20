@@ -17,7 +17,11 @@ use report::{human_bytes, Report, Summary};
 use scan::FileEntry;
 
 #[derive(Parser)]
-#[command(name = "archaeologist", version, about = "Understand any codebase in a minute")]
+#[command(
+    name = "archaeologist",
+    version,
+    about = "Understand any codebase in a minute"
+)]
 struct Cli {
     #[command(subcommand)]
     cmd: Cmd,
@@ -52,7 +56,12 @@ fn main() -> Result<()> {
     }
 }
 
-fn scan_project(path: PathBuf, out: Option<PathBuf>, check_updates: bool, open: bool) -> Result<()> {
+fn scan_project(
+    path: PathBuf,
+    out: Option<PathBuf>,
+    check_updates: bool,
+    open: bool,
+) -> Result<()> {
     let root = path
         .canonicalize()
         .with_context(|| format!("cannot open {}", path.display()))?;

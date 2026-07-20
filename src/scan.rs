@@ -27,7 +27,7 @@ pub fn walk(root: &Path) -> anyhow::Result<Vec<FileEntry>> {
             Ok(e) => e,
             Err(_) => continue,
         };
-        if !entry.file_type().map_or(false, |t| t.is_file()) {
+        if !entry.file_type().is_some_and(|t| t.is_file()) {
             continue;
         }
         let abs = entry.into_path();

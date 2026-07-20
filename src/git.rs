@@ -43,8 +43,8 @@ pub fn analyze(root: &Path, churn: &HashMap<String, usize>) -> Option<GitInfo> {
         return None;
     }
 
-    let last_commit_at = run(root, &["log", "-1", "--format=%ct"])
-        .and_then(|s| s.trim().parse().ok());
+    let last_commit_at =
+        run(root, &["log", "-1", "--format=%ct"]).and_then(|s| s.trim().parse().ok());
     let first_commit_at = run(root, &["log", "--reverse", "--format=%ct"])
         .and_then(|s| s.lines().next().and_then(|l| l.trim().parse().ok()));
 
@@ -149,7 +149,7 @@ fn dir_growth(first_seen: &[FirstSeen]) -> Vec<DirGrowth> {
             first_at,
         })
         .collect();
-    out.sort_by(|a, b| b.files_added.cmp(&a.files_added));
+    out.sort_by_key(|d| std::cmp::Reverse(d.files_added));
     out
 }
 

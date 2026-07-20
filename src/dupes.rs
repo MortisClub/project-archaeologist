@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
-use sha2::{Digest, Sha256};
 use serde::Serialize;
+use sha2::{Digest, Sha256};
 
 use crate::scan::FileEntry;
 
@@ -44,10 +44,7 @@ pub fn find(files: &[FileEntry]) -> Vec<DupGroup> {
         }
     }
 
-    let mut out: Vec<DupGroup> = groups
-        .into_values()
-        .filter(|g| g.paths.len() > 1)
-        .collect();
+    let mut out: Vec<DupGroup> = groups.into_values().filter(|g| g.paths.len() > 1).collect();
     out.sort_by_key(|g| std::cmp::Reverse(g.size * g.paths.len() as u64));
     out
 }
