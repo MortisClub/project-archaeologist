@@ -86,10 +86,9 @@ archaeologist scan ../some-old-project --check-updates --open
 - `src/dupes.rs` — дубликаты по SHA-256
 - `src/git.rs` — история из `git log`
 - `src/report.rs`, `templates/report.html` — JSON и интерактивная карта
-- `tools/make-icons.js` — генерит иконку в `assets/`
 
 ## Лицензия
 
-MIT, см. [LICENSE](LICENSE).
+MIT, см. [LICENSE](LICENSE). Иконка собрана из [Microsoft Fluent Emoji](https://github.com/microsoft/fluentui-emoji) (MIT).
 
 <p align="center">© MortisClub 2026</p>
