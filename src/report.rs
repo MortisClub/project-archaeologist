@@ -2,8 +2,10 @@ use std::path::Path;
 
 use serde::Serialize;
 
+use crate::deps::Dependency;
 use crate::dupes::DupGroup;
 use crate::git::GitInfo;
+use crate::imports::Insights;
 use crate::scan::FileEntry;
 use crate::stack::Stack;
 
@@ -13,6 +15,8 @@ pub struct Report {
     pub generated_at: i64,
     pub summary: Summary,
     pub stack: Stack,
+    pub insights: Insights,
+    pub dependencies: Vec<Dependency>,
     pub duplicates: Vec<DupGroup>,
     pub git: Option<GitInfo>,
     pub files: Vec<FileEntry>,

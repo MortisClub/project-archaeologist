@@ -50,7 +50,12 @@
   .dup .head { color: var(--accent); font-size: 12px; margin-bottom: 4px; }
   .dup .path { color: var(--muted); font-size: 13px; }
   .empty { color: var(--muted); }
+  .muted { color: var(--muted); font-weight: 400; text-transform: none; letter-spacing: 0; }
   .scroll { overflow-x: auto; }
+  .deadgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 4px 18px; }
+  .deadgrid .path { color: #e5534b; font-size: 13px; }
+  .badge { font-size: 11px; padding: 1px 7px; border-radius: 999px; background: #e5534b22; color: #e5534b; }
+  .ver { color: var(--muted); font-size: 12px; }
 </style>
 </head>
 <body>
@@ -68,6 +73,21 @@
     <h2>Languages</h2>
     <div class="langbar" id="langbar"></div>
     <div class="legend" id="legend"></div>
+  </section>
+
+  <section id="important-section">
+    <h2>Most important files</h2>
+    <div class="rows" id="important"></div>
+  </section>
+
+  <section id="dead-section">
+    <h2>Unused files <span class="muted" id="dead-count"></span></h2>
+    <div id="dead"></div>
+  </section>
+
+  <section id="deps-section">
+    <h2>Dependencies</h2>
+    <div id="deps"></div>
   </section>
 
   <section id="map-section">
@@ -141,6 +161,9 @@ if (tags.length === 0) {
 }
 
 renderLanguages();
+renderImportant();
+renderDead();
+renderDeps();
 renderMap();
 renderBiggest();
 renderGit();
@@ -169,6 +192,67 @@ function renderLanguages() {
     item.append(dot, el("span", null, `${esc(l.language)} · ${l.files}`));
     legend.append(item);
   });
+}
+
+function renderImportant() {
+  const files = DATA.insights.important;
+  if (!files.length) {
+    document.getElementById("important-section").remove();
+    return;
+  }
+  const max = files[0].score || 1;
+  const box = document.getElementById("important");
+  for (const f of files) {
+    const bits = [];
+    if (f.in_degree) bits.push(`${f.in_degree} imports`);
+    if (f.changes) bits.push(`${f.changes} changes`);
+    box.append(barRow(f.path, bits.join(" · ") || "—", f.score / max));
+  }
+}
+
+function renderDead() {
+  const dead = DATA.insights.dead_files;
+  const langs = DATA.insights.analyzed_languages;
+  const box = document.getElementById("dead");
+  const count = document.getElementById("dead-count");
+  if (!langs.length) {
+    count.textContent = "— no analyzable languages";
+    box.append(el("div", "empty", "Import graph covers JavaScript/TypeScript and Python."));
+    return;
+  }
+  count.textContent = `(${langs.join(", ")})`;
+  if (!dead.length) {
+    box.append(el("div", "empty", "Every source file is reachable through imports."));
+    return;
+  }
+  const grid = el("div", "deadgrid");
+  for (const p of dead) grid.append(el("div", "path", esc(p)));
+  box.append(grid);
+}
+
+function renderDeps() {
+  const deps = DATA.dependencies;
+  const box = document.getElementById("deps");
+  if (!deps.length) {
+    document.getElementById("deps-section").remove();
+    return;
+  }
+  const rows = deps.map(d => {
+    const version = d.latest && d.latest !== d.required
+      ? `${d.required} → ${d.latest}`
+      : d.required;
+    return [d.ecosystem, d.name, version, d.outdated ? "outdated" : ""];
+  });
+  const table = makeTable(["", "Package", "Version", ""], rows);
+  table.querySelectorAll("tbody tr").forEach((tr, i) => {
+    tr.children[1].className = "";
+    tr.children[2].className = "ver";
+    if (deps[i].outdated) {
+      tr.children[3].innerHTML = '<span class="badge">outdated</span>';
+    }
+    tr.children[3].className = "";
+  });
+  box.append(table);
 }
 
 function renderMap() {

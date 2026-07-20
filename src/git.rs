@@ -33,7 +33,7 @@ pub struct DirGrowth {
     pub first_at: i64,
 }
 
-pub fn analyze(root: &Path) -> Option<GitInfo> {
+pub fn analyze(root: &Path, churn: &HashMap<String, usize>) -> Option<GitInfo> {
     run(root, &["rev-parse", "--is-inside-work-tree"])?;
 
     let commits = run(root, &["rev-list", "--count", "HEAD"])
@@ -48,7 +48,7 @@ pub fn analyze(root: &Path) -> Option<GitInfo> {
     let first_commit_at = run(root, &["log", "--reverse", "--format=%ct"])
         .and_then(|s| s.lines().next().and_then(|l| l.trim().parse().ok()));
 
-    let hotspots = hotspots(root);
+    let hotspots = hotspots(churn);
     let first_seen = first_seen(root);
     let dir_growth = dir_growth(&first_seen);
 
@@ -62,23 +62,27 @@ pub fn analyze(root: &Path) -> Option<GitInfo> {
     })
 }
 
-fn hotspots(root: &Path) -> Vec<Hotspot> {
+pub fn churn_map(root: &Path) -> HashMap<String, usize> {
     let log = match run(root, &["log", "--format=", "--name-only"]) {
         Some(l) => l,
-        None => return Vec::new(),
+        None => return HashMap::new(),
     };
-    let mut counts: HashMap<&str, usize> = HashMap::new();
+    let mut counts: HashMap<String, usize> = HashMap::new();
     for line in log.lines() {
         let line = line.trim();
         if line.is_empty() {
             continue;
         }
-        *counts.entry(line).or_insert(0) += 1;
+        *counts.entry(line.to_string()).or_insert(0) += 1;
     }
-    let mut out: Vec<Hotspot> = counts
-        .into_iter()
-        .map(|(path, changes)| Hotspot {
-            path: path.to_string(),
+    counts
+}
+
+fn hotspots(churn: &HashMap<String, usize>) -> Vec<Hotspot> {
+    let mut out: Vec<Hotspot> = churn
+        .iter()
+        .map(|(path, &changes)| Hotspot {
+            path: path.clone(),
             changes,
         })
         .collect();

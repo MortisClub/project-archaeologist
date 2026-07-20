@@ -1,5 +1,7 @@
+mod deps;
 mod dupes;
 mod git;
+mod imports;
 mod report;
 mod scan;
 mod stack;
@@ -29,6 +31,9 @@ enum Cmd {
         /// Directory to write the report into (default: current directory)
         #[arg(long)]
         out: Option<PathBuf>,
+        /// Query package registries to flag outdated dependencies (needs network)
+        #[arg(long)]
+        check_updates: bool,
         /// Open the HTML report when finished
         #[arg(long)]
         open: bool,
@@ -38,11 +43,16 @@ enum Cmd {
 fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.cmd {
-        Cmd::Scan { path, out, open } => scan_project(path, out, open),
+        Cmd::Scan {
+            path,
+            out,
+            check_updates,
+            open,
+        } => scan_project(path, out, check_updates, open),
     }
 }
 
-fn scan_project(path: PathBuf, out: Option<PathBuf>, open: bool) -> Result<()> {
+fn scan_project(path: PathBuf, out: Option<PathBuf>, check_updates: bool, open: bool) -> Result<()> {
     let root = path
         .canonicalize()
         .with_context(|| format!("cannot open {}", path.display()))?;
@@ -50,8 +60,11 @@ fn scan_project(path: PathBuf, out: Option<PathBuf>, open: bool) -> Result<()> {
     let files = scan::walk(&root)?;
     let summary = summarize(&files);
     let stack = stack::detect(&root, &files);
+    let churn = git::churn_map(&root);
+    let insights = imports::analyze(&files, &churn);
+    let dependencies = deps::collect(&root, check_updates);
     let duplicates = dupes::find(&files);
-    let git = git::analyze(&root);
+    let git = git::analyze(&root, &churn);
 
     let root_display = root
         .display()
@@ -64,6 +77,8 @@ fn scan_project(path: PathBuf, out: Option<PathBuf>, open: bool) -> Result<()> {
         generated_at: now(),
         summary,
         stack,
+        insights,
+        dependencies,
         duplicates,
         git,
         files,
@@ -133,6 +148,19 @@ fn print_summary(report: &Report) {
         println!("  languages: {}", top.join(", "));
     }
 
+    if !report.dependencies.is_empty() {
+        let outdated = report.dependencies.iter().filter(|d| d.outdated).count();
+        if outdated > 0 {
+            println!(
+                "  dependencies: {} ({} outdated)",
+                report.dependencies.len(),
+                outdated
+            );
+        } else {
+            println!("  dependencies: {}", report.dependencies.len());
+        }
+    }
+
     if !report.duplicates.is_empty() {
         let copies: usize = report.duplicates.iter().map(|g| g.paths.len()).sum();
         println!(
@@ -140,6 +168,16 @@ fn print_summary(report: &Report) {
             copies,
             report.duplicates.len()
         );
+    }
+
+    if !report.insights.dead_files.is_empty() {
+        println!(
+            "  unused: {} files never imported",
+            report.insights.dead_files.len()
+        );
+    }
+    if let Some(top) = report.insights.important.first() {
+        println!("  most important: {}", top.path);
     }
 
     if let Some(git) = &report.git {
