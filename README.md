@@ -1,21 +1,28 @@
 <p align="center">
-  <img src="assets/logo.svg" alt="Project Archaeologist" width="660">
+  <img src="assets/icon.png" width="128" alt="Project Archaeologist">
+</p>
+
+<h1 align="center">Project Archaeologist</h1>
+
+<p align="center">
+  Понять любой проект за минуту — локально, без сервера и облака.<br>
+  Стек, структура, мёртвый код, важные файлы, устаревшие зависимости и история git.
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT">
-  <img src="https://img.shields.io/badge/built%20with-Rust-orange" alt="Rust">
+  <img src="https://img.shields.io/badge/Rust-CLI-d9853b?style=flat-square&logo=rust&logoColor=white" alt="Rust">
+  <img src="https://img.shields.io/badge/license-MIT-2b1a10?style=flat-square" alt="MIT">
+  <img src="https://img.shields.io/badge/%C2%A9%20MortisClub-2026-2b1a10?style=flat-square" alt="MortisClub">
 </p>
 
-Открываешь старый проект, о котором уже ничего не помнишь, — и за минуту понимаешь, что это.
-Стек, форма дерева, какие файлы никто не импортирует, какие важнее всего, какие зависимости
-отстали и, если это git-репозиторий, как проект рос. Всё считается локально, без сервера и облака.
+---
 
-Одна команда печатает короткую сводку и кладёт рядом полный отчёт — `archaeology-report.json`
+Открываешь старый проект, о котором уже ничего не помнишь, — и за минуту понимаешь, что это.
+Одна команда печатает короткую сводку и кладёт рядом полный отчёт: `archaeology-report.json`
 и самодостаточную карту `archaeology-report.html`, которую можно открыть в браузере.
 
 <p align="center">
-  <img src="assets/report-overview.png" alt="HTML-отчёт" width="820">
+  <img src="assets/report-overview.png" width="820" alt="HTML-отчёт">
 </p>
 
 ## Что оно находит
@@ -37,7 +44,7 @@
 файлы попадают в инвентарь, но без графа — и отчёт про это честно пишет.
 
 <p align="center">
-  <img src="assets/report-unused.png" alt="Неиспользуемые файлы и устаревшие зависимости" width="820">
+  <img src="assets/report-unused.png" width="820" alt="Неиспользуемые файлы и устаревшие зависимости">
 </p>
 
 Историю проекта я беру из git, а не из файловых времён: те слишком часто врут после
@@ -70,6 +77,19 @@ archaeologist scan <путь>
 archaeologist scan ../some-old-project --check-updates --open
 ```
 
+## Как устроено
+
+- `src/scan.rs` — обход дерева с учётом `.gitignore`
+- `src/stack.rs` — языки, маркеры стека, фреймворки
+- `src/imports.rs` — граф импортов, мёртвый код, важность файлов
+- `src/deps.rs` — инвентарь зависимостей и проверка устаревших
+- `src/dupes.rs` — дубликаты по SHA-256
+- `src/git.rs` — история из `git log`
+- `src/report.rs`, `templates/report.html` — JSON и интерактивная карта
+- `tools/make-icons.js` — генерит иконку в `assets/`
+
 ## Лицензия
 
 MIT, см. [LICENSE](LICENSE).
+
+<p align="center">© MortisClub 2026</p>
