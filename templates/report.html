@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Project Archaeology</title>
+<style>
+  :root {
+    --bg: #0e1116;
+    --panel: #161b22;
+    --line: #232a33;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --accent: #d9a441;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 14px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 32px 20px 80px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .root { color: var(--muted); word-break: break-all; margin-bottom: 24px; }
+  .stats { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 28px; }
+  .stat { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 18px; min-width: 120px; }
+  .stat .n { font-size: 24px; font-weight: 600; }
+  .stat .l { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+  section { margin-bottom: 32px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); border-bottom: 1px solid var(--line); padding-bottom: 8px; margin: 0 0 16px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-size: 13px; }
+  .langbar { display: flex; height: 14px; border-radius: 4px; overflow: hidden; margin-bottom: 12px; }
+  .langbar span { height: 100%; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 18px; }
+  .legend .item { display: flex; align-items: center; gap: 7px; font-size: 13px; }
+  .dot { width: 10px; height: 10px; border-radius: 2px; flex: none; }
+  .rows { display: flex; flex-direction: column; gap: 8px; }
+  .row { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; }
+  .row .track { position: relative; background: var(--panel); border-radius: 4px; height: 26px; overflow: hidden; }
+  .row .fill { position: absolute; inset: 0 auto 0 0; background: #1f6feb33; border-right: 2px solid var(--accent); }
+  .row .name { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90%; }
+  .row .val { color: var(--muted); font-size: 12px; text-align: right; min-width: 90px; }
+  table { width: 100%; border-collapse: collapse; }
+  td, th { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); font-weight: 400; }
+  th { color: var(--muted); font-size: 12px; text-transform: uppercase; }
+  td.num { text-align: right; color: var(--muted); }
+  .dup { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; margin-bottom: 8px; }
+  .dup .head { color: var(--accent); font-size: 12px; margin-bottom: 4px; }
+  .dup .path { color: var(--muted); font-size: 13px; }
+  .empty { color: var(--muted); }
+  .scroll { overflow-x: auto; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Project Archaeology</h1>
+  <div class="root" id="root"></div>
+  <div class="stats" id="stats"></div>
+
+  <section id="stack-section">
+    <h2>Stack</h2>
+    <div class="chips" id="markers"></div>
+  </section>
+
+  <section id="lang-section">
+    <h2>Languages</h2>
+    <div class="langbar" id="langbar"></div>
+    <div class="legend" id="legend"></div>
+  </section>
+
+  <section id="map-section">
+    <h2>Project map — top-level directories</h2>
+    <div class="rows" id="map"></div>
+  </section>
+
+  <section id="big-section">
+    <h2>Largest files</h2>
+    <div class="rows" id="big"></div>
+  </section>
+
+  <section id="git-section">
+    <h2>Git history</h2>
+    <div id="git"></div>
+  </section>
+
+  <section id="dup-section">
+    <h2>Duplicate files</h2>
+    <div id="dups"></div>
+  </section>
+</div>
+
+<script>
+const DATA = "__DATA__";
+
+const PALETTE = ["#d9a441","#4c9aff","#57ab5a","#e5534b","#986ee2","#39c5cf","#c9743a","#db61a2","#a6b0bf","#3fb950"];
+
+function bytes(n) {
+  const u = ["B","KB","MB","GB","TB"];
+  let i = 0, s = n;
+  while (s >= 1024 && i < u.length - 1) { s /= 1024; i++; }
+  return i === 0 ? n + " B" : s.toFixed(1) + " " + u[i];
+}
+function date(ts) {
+  if (!ts) return "—";
+  return new Date(ts * 1000).toISOString().slice(0, 10);
+}
+function el(tag, cls, html) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (html != null) e.innerHTML = html;
+  return e;
+}
+function esc(s) {
+  return s.replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+}
+
+document.getElementById("root").textContent = DATA.root;
+
+const stats = [
+  [DATA.summary.files, "files"],
+  [DATA.summary.dirs, "directories"],
+  [bytes(DATA.summary.bytes), "size"],
+  [DATA.stack.languages.length, "languages"],
+];
+if (DATA.git) stats.push([DATA.git.commits, "commits"]);
+const statsEl = document.getElementById("stats");
+for (const [n, l] of stats) {
+  const s = el("div", "stat");
+  s.append(el("div", "n", String(n)), el("div", "l", l));
+  statsEl.append(s);
+}
+
+const markers = document.getElementById("markers");
+const tags = [...DATA.stack.markers, ...DATA.stack.frameworks];
+if (tags.length === 0) {
+  markers.append(el("span", "empty", "No manifest files detected."));
+} else {
+  for (const t of tags) markers.append(el("span", "chip", esc(t)));
+}
+
+renderLanguages();
+renderMap();
+renderBiggest();
+renderGit();
+renderDuplicates();
+
+function renderLanguages() {
+  const langs = DATA.stack.languages;
+  if (langs.length === 0) {
+    document.getElementById("lang-section").remove();
+    return;
+  }
+  const total = langs.reduce((a, l) => a + l.bytes, 0) || 1;
+  const bar = document.getElementById("langbar");
+  const legend = document.getElementById("legend");
+  langs.forEach((l, i) => {
+    const color = PALETTE[i % PALETTE.length];
+    const seg = el("span");
+    seg.style.width = (l.bytes / total * 100).toFixed(2) + "%";
+    seg.style.background = color;
+    seg.title = l.language + " " + (l.bytes / total * 100).toFixed(1) + "%";
+    bar.append(seg);
+
+    const item = el("div", "item");
+    const dot = el("span", "dot");
+    dot.style.background = color;
+    item.append(dot, el("span", null, `${esc(l.language)} · ${l.files}`));
+    legend.append(item);
+  });
+}
+
+function renderMap() {
+  const dirs = {};
+  for (const f of DATA.files) {
+    const seg = f.path.includes("/") ? f.path.split("/")[0] : "(root)";
+    (dirs[seg] ||= { bytes: 0, count: 0 });
+    dirs[seg].bytes += f.size;
+    dirs[seg].count++;
+  }
+  const rows = Object.entries(dirs).sort((a, b) => b[1].bytes - a[1].bytes);
+  const max = rows.length ? rows[0][1].bytes || 1 : 1;
+  const map = document.getElementById("map");
+  for (const [name, d] of rows) {
+    map.append(barRow(name, `${bytes(d.bytes)} · ${d.count} files`, d.bytes / max));
+  }
+}
+
+function renderBiggest() {
+  const top = [...DATA.files].sort((a, b) => b.size - a.size).slice(0, 15);
+  const max = top.length ? top[0].size || 1 : 1;
+  const big = document.getElementById("big");
+  for (const f of top) {
+    big.append(barRow(f.path, bytes(f.size), f.size / max));
+  }
+}
+
+function barRow(name, value, ratio) {
+  const row = el("div", "row");
+  const track = el("div", "track");
+  const fill = el("div", "fill");
+  fill.style.width = Math.max(ratio * 100, 1).toFixed(1) + "%";
+  track.append(fill, el("div", "name", esc(name)));
+  row.append(track, el("div", "val", value));
+  return row;
+}
+
+function renderGit() {
+  const git = DATA.git;
+  const box = document.getElementById("git");
+  if (!git) {
+    box.append(el("div", "empty", "Not a git repository — history is unavailable."));
+    return;
+  }
+
+  box.append(el("div", "root",
+    `${date(git.first_commit_at)} → ${date(git.last_commit_at)} · ${git.commits} commits`));
+
+  if (git.hotspots.length) {
+    box.append(el("h2", null, "Most changed"));
+    box.append(makeTable(["File", "Changes"],
+      git.hotspots.map(h => [h.path, String(h.changes)])));
+  }
+  if (git.dir_growth.length) {
+    box.append(el("h2", null, "Where the project grew"));
+    box.append(makeTable(["Directory", "Files added", "First seen"],
+      git.dir_growth.map(d => [d.dir, String(d.files_added), date(d.first_at)])));
+  }
+  if (git.first_seen.length) {
+    box.append(el("h2", null, "Oldest files"));
+    box.append(makeTable(["File", "First seen"],
+      git.first_seen.slice(0, 15).map(f => [f.path, date(f.at)])));
+  }
+}
+
+function makeTable(headers, rows) {
+  const scroll = el("div", "scroll");
+  const t = el("table");
+  const thead = el("thead");
+  const htr = el("tr");
+  headers.forEach((h, i) => {
+    const th = el("th", i === 0 ? null : "num");
+    th.textContent = h;
+    htr.append(th);
+  });
+  thead.append(htr);
+  const tbody = el("tbody");
+  for (const cells of rows) {
+    const tr = el("tr");
+    cells.forEach((c, i) => {
+      const td = el("td", i === 0 ? null : "num");
+      td.textContent = c;
+      tr.append(td);
+    });
+    tbody.append(tr);
+  }
+  t.append(thead, tbody);
+  scroll.append(t);
+  return scroll;
+}
+
+function renderDuplicates() {
+  const dups = DATA.duplicates;
+  const box = document.getElementById("dups");
+  if (!dups.length) {
+    box.append(el("div", "empty", "No duplicate files found."));
+    return;
+  }
+  for (const g of dups.slice(0, 30)) {
+    const d = el("div", "dup");
+    d.append(el("div", "head", `${g.paths.length} copies · ${bytes(g.size)} each`));
+    for (const p of g.paths) d.append(el("div", "path", esc(p)));
+    box.append(d);
+  }
+}
+</script>
+</body>
+</html>

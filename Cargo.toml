@@ -1,0 +1,22 @@
+[package]
+name = "archaeologist"
+version = "0.1.0"
+edition = "2021"
+description = "Understand any codebase in a minute: stack, structure, duplicates and git history"
+license = "MIT"
+
+[[bin]]
+name = "archaeologist"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+ignore = "0.4"
+sha2 = "0.10"
+anyhow = "1"
+
+[profile.release]
+lto = true
+strip = true
